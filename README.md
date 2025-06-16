@@ -45,40 +45,38 @@ The application uses the following ports and services:
    
    Copy the output and paste it as the `KUBE_CONFIG_DATA` secret value in GitHub.
 
-## Deployment Order
+## Deployment Approach
 
-The GitHub workflow deploys components in this order:
+**Infrastructure Workflow (this repo):**
+The GitHub workflow deploys ONLY infrastructure components:
+- Secrets (Auth0, Cassandra credentials)
+- Zookeeper
+- Kafka 
+- Cassandra
+- Prometheus (monitoring)
+- Grafana (dashboards)
 
-1. **Infrastructure Components:**
-   - Secrets (Auth0, Cassandra credentials)
-   - Zookeeper
-   - Kafka 
-   - Cassandra
-   - Prometheus (monitoring)
-   - Grafana (dashboards)
+**Microservices (separate workflows):**
+Each microservice has its own CI/CD pipeline in their respective repositories:
+- Auth Service (port 5001) - deployed via `babbly-auth-service/release.yml`
+- User Service (port 8081) - deployed via `babbly-user-service/release.yml`
+- Post Service (port 8080) - deployed via `babbly-post-service/release.yml`
+- Comment Service (port 8082) - deployed via `babbly-comment-service/release.yml`
+- Like Service (port 8083) - deployed via `babbly-like-service/release.yml`
+- API Gateway (port 8080 → 5010) - deployed via `babbly-api-gateway/release.yml`
+- Frontend (port 3000 → 30000) - deployed via `babbly-frontend/release.yml`
 
-2. **Backend Services:**
-   - Auth Service (port 5001)
-   - User Service (port 8081)
-   - Post Service (port 8080)
-   - Comment Service (port 8082)
-   - Like Service (port 8083)
+## Manual Infrastructure Deployment
 
-3. **Gateway & Frontend:**
-   - API Gateway (port 8080 → 5010)
-   - Frontend (port 3000 → 30000)
-
-## Manual Deployment
-
-If you need to deploy manually:
+If you need to deploy infrastructure manually (run from repository root):
 
 ```bash
-# Deploy infrastructure
-kubectl apply -f k8s/secrets.yaml --namespace=default
-kubectl apply -f k8s/kafka-zookeeper.yaml --namespace=default
-kubectl apply -f k8s/cassandra.yaml --namespace=default
-kubectl apply -f k8s/prometheus.yaml --namespace=default
-kubectl apply -f k8s/grafana.yaml --namespace=default
+# Deploy infrastructure only
+kubectl apply -f infrastructure/k8s/secrets.yaml --namespace=default
+kubectl apply -f infrastructure/k8s/kafka-zookeeper.yaml --namespace=default
+kubectl apply -f infrastructure/k8s/cassandra.yaml --namespace=default
+kubectl apply -f infrastructure/k8s/prometheus.yaml --namespace=default
+kubectl apply -f infrastructure/k8s/grafana.yaml --namespace=default
 
 # Wait for infrastructure to be ready
 kubectl wait --for=condition=available --timeout=300s deployment/kafka --namespace=default
@@ -89,16 +87,9 @@ kubectl wait --for=condition=ready --timeout=600s pod -l app=cassandra --namespa
 
 kubectl wait --for=condition=available --timeout=300s deployment/prometheus --namespace=default
 kubectl wait --for=condition=available --timeout=300s deployment/grafana --namespace=default
-
-# Deploy services
-kubectl apply -f ../babbly-auth-service/k8s/ --namespace=default
-kubectl apply -f ../babbly-user-service/k8s/ --namespace=default
-kubectl apply -f ../babbly-post-service/k8s/ --namespace=default
-kubectl apply -f ../babbly-comment-service/k8s/ --namespace=default
-kubectl apply -f ../babbly-like-service/k8s/ --namespace=default
-kubectl apply -f ../babbly-api-gateway/k8s/ --namespace=default
-kubectl apply -f ../babbly-frontend/k8s/ --namespace=default
 ```
+
+**Note:** Microservices are deployed separately via their individual CI/CD workflows when code changes are pushed to each service repository.
 
 ## Accessing the Application
 

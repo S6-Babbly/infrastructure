@@ -24,13 +24,13 @@ jobs:
     - name: Deploy infrastructure components
       run: |
         echo "Deploying secrets..."
-        kubectl apply -f infrastructure/k8s/secrets.yaml --namespace=default
+        kubectl apply -f k8s/secrets.yaml --namespace=default
         
         echo "Deploying Kafka and Zookeeper..."
-        kubectl apply -f infrastructure/k8s/kafka-zookeeper.yaml --namespace=default
+        kubectl apply -f k8s/kafka-zookeeper.yaml --namespace=default
         
         echo "Deploying Cassandra..."
-        kubectl apply -f infrastructure/k8s/cassandra.yaml --namespace=default
+        kubectl apply -f k8s/cassandra.yaml --namespace=default
         
         echo "Checking if Cassandra pod exists and restarting if needed..."
         if kubectl get pod cassandra-0 --namespace=default >/dev/null 2>&1; then
@@ -39,10 +39,10 @@ jobs:
         fi
         
         echo "Deploying Prometheus..."
-        kubectl apply -f infrastructure/k8s/prometheus.yaml --namespace=default
+        kubectl apply -f k8s/prometheus.yaml --namespace=default
         
         echo "Deploying Grafana..."
-        kubectl apply -f infrastructure/k8s/grafana.yaml --namespace=default
+        kubectl apply -f k8s/grafana.yaml --namespace=default
 
     - name: Wait for infrastructure to be ready
       run: |
@@ -86,59 +86,24 @@ jobs:
           echo "Continuing despite Grafana not being ready..."
         }
 
-    - name: Deploy microservices
-      run: |
-        echo "Deploying Auth Service..."
-        kubectl apply -f babbly-auth-service/k8s/ --namespace=default
-        
-        echo "Deploying User Service..."
-        kubectl apply -f babbly-user-service/k8s/ --namespace=default
-        
-        echo "Deploying Post Service..."
-        kubectl apply -f babbly-post-service/k8s/ --namespace=default
-        
-        echo "Deploying Comment Service..."
-        kubectl apply -f babbly-comment-service/k8s/ --namespace=default
-        
-        echo "Deploying Like Service..."
-        kubectl apply -f babbly-like-service/k8s/ --namespace=default
 
-    - name: Deploy API Gateway
-      run: |
-        echo "Deploying API Gateway..."
-        kubectl apply -f babbly-api-gateway/k8s/ --namespace=default
 
-    - name: Deploy Frontend
+    - name: Get infrastructure status
       run: |
-        echo "Deploying Frontend..."
-        kubectl apply -f babbly-frontend/k8s/ --namespace=default
-
-    - name: Wait for deployments to be ready
-      run: |
-        echo "Waiting for all deployments to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/auth-service --namespace=default
-        kubectl wait --for=condition=available --timeout=300s deployment/user-service --namespace=default
-        kubectl wait --for=condition=available --timeout=300s deployment/post-service --namespace=default
-        kubectl wait --for=condition=available --timeout=300s deployment/comment-service --namespace=default
-        kubectl wait --for=condition=available --timeout=300s deployment/like-service --namespace=default
-        kubectl wait --for=condition=available --timeout=300s deployment/api-gateway --namespace=default
-        kubectl wait --for=condition=available --timeout=300s deployment/frontend --namespace=default
-
-    - name: Get service information
-      run: |
-        echo "Getting service information..."
-        kubectl get services --namespace=default
-        echo "Getting pod status..."
-        kubectl get pods --namespace=default
-        echo "Getting external IP for API Gateway..."
-        kubectl get service api-gateway --namespace=default
+        echo "Getting infrastructure services..."
+        kubectl get services zookeeper kafka cassandra prometheus grafana --namespace=default
+        echo "Getting infrastructure pods..."
+        kubectl get pods -l app=zookeeper,app=kafka,app=cassandra,app=prometheus,app=grafana --namespace=default
         echo "Getting monitoring services..."
         kubectl get service prometheus grafana --namespace=default
 
-    - name: Verify deployment
+    - name: Verify infrastructure
       run: |
         echo "Verifying Kafka topics..."
         kubectl exec deployment/kafka --namespace=default -- kafka-topics --bootstrap-server localhost:9092 --list || true
         
-        echo "Checking service connectivity..."
-        kubectl get endpoints --namespace=default 
+        echo "Checking infrastructure endpoints..."
+        kubectl get endpoints zookeeper kafka cassandra prometheus grafana --namespace=default
+        
+        echo "Infrastructure deployment complete! ✅"
+        echo "Individual microservices should be deployed via their own CI/CD workflows." 
