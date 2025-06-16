@@ -24,13 +24,13 @@ jobs:
     - name: Deploy infrastructure components
       run: |
         echo "Deploying secrets..."
-        kubectl apply -f k8s/secrets.yaml --namespace=default
+        kubectl apply -f infrastructure/k8s/secrets.yaml --namespace=default
         
         echo "Deploying Kafka and Zookeeper..."
-        kubectl apply -f k8s/kafka-zookeeper.yaml --namespace=default
+        kubectl apply -f infrastructure/k8s/kafka-zookeeper.yaml --namespace=default
         
         echo "Deploying Cassandra..."
-        kubectl apply -f k8s/cassandra.yaml --namespace=default
+        kubectl apply -f infrastructure/k8s/cassandra.yaml --namespace=default
         
         echo "Checking if Cassandra pod exists and restarting if needed..."
         if kubectl get pod cassandra-0 --namespace=default >/dev/null 2>&1; then
@@ -39,10 +39,10 @@ jobs:
         fi
         
         echo "Deploying Prometheus..."
-        kubectl apply -f k8s/prometheus.yaml --namespace=default
+        kubectl apply -f infrastructure/k8s/prometheus.yaml --namespace=default
         
         echo "Deploying Grafana..."
-        kubectl apply -f k8s/grafana.yaml --namespace=default
+        kubectl apply -f infrastructure/k8s/grafana.yaml --namespace=default
 
     - name: Wait for infrastructure to be ready
       run: |
@@ -89,29 +89,29 @@ jobs:
     - name: Deploy microservices
       run: |
         echo "Deploying Auth Service..."
-        kubectl apply -f ../babbly-auth-service/k8s/ --namespace=default
+        kubectl apply -f babbly-auth-service/k8s/ --namespace=default
         
         echo "Deploying User Service..."
-        kubectl apply -f ../babbly-user-service/k8s/ --namespace=default
+        kubectl apply -f babbly-user-service/k8s/ --namespace=default
         
         echo "Deploying Post Service..."
-        kubectl apply -f ../babbly-post-service/k8s/ --namespace=default
+        kubectl apply -f babbly-post-service/k8s/ --namespace=default
         
         echo "Deploying Comment Service..."
-        kubectl apply -f ../babbly-comment-service/k8s/ --namespace=default
+        kubectl apply -f babbly-comment-service/k8s/ --namespace=default
         
         echo "Deploying Like Service..."
-        kubectl apply -f ../babbly-like-service/k8s/ --namespace=default
+        kubectl apply -f babbly-like-service/k8s/ --namespace=default
 
     - name: Deploy API Gateway
       run: |
         echo "Deploying API Gateway..."
-        kubectl apply -f ../babbly-api-gateway/k8s/ --namespace=default
+        kubectl apply -f babbly-api-gateway/k8s/ --namespace=default
 
     - name: Deploy Frontend
       run: |
         echo "Deploying Frontend..."
-        kubectl apply -f ../babbly-frontend/k8s/ --namespace=default
+        kubectl apply -f babbly-frontend/k8s/ --namespace=default
 
     - name: Wait for deployments to be ready
       run: |
