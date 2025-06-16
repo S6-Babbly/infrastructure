@@ -59,9 +59,28 @@ spec:
             command:
             - /bin/bash
             - -c
-            - "nodetool status | grep -E '^UN'"
-          initialDelaySeconds: 30
-          periodSeconds: 10
+            - "cqlsh -e 'SELECT now() FROM system.local;'"
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 5
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - "nodetool status | grep -E '^UN' || cqlsh -e 'SELECT now() FROM system.local;'"
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "1000m"
         volumeMounts:
         - name: cassandra-data
           mountPath: /var/lib/cassandra

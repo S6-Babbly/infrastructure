@@ -82,7 +82,11 @@ kubectl apply -f k8s/grafana.yaml --namespace=default
 
 # Wait for infrastructure to be ready
 kubectl wait --for=condition=available --timeout=300s deployment/kafka --namespace=default
-kubectl wait --for=condition=ready --timeout=300s pod -l app=cassandra --namespace=default
+
+# Cassandra takes longer to start, so wait for StatefulSet first
+kubectl wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/cassandra --namespace=default
+kubectl wait --for=condition=ready --timeout=600s pod -l app=cassandra --namespace=default
+
 kubectl wait --for=condition=available --timeout=300s deployment/prometheus --namespace=default
 kubectl wait --for=condition=available --timeout=300s deployment/grafana --namespace=default
 
@@ -151,6 +155,20 @@ Services communicate using Kubernetes DNS:
   - Supports custom dashboard creation
 
 ## Troubleshooting
+
+### Common Issues
+
+**Cassandra Startup Timeout:**
+Cassandra can take 5-10 minutes to start on first deployment. This is normal behavior. If it times out:
+```bash
+# Check Cassandra status
+kubectl get statefulset cassandra --namespace=default
+kubectl get pods -l app=cassandra --namespace=default
+kubectl logs cassandra-0 --namespace=default --tail=100
+
+# Wait manually with longer timeout
+kubectl wait --for=condition=ready --timeout=900s pod -l app=cassandra --namespace=default
+```
 
 ### Check pod status:
 ```bash

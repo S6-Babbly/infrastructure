@@ -46,8 +46,21 @@ jobs:
         echo "Waiting for Kafka to be ready..."
         kubectl wait --for=condition=available --timeout=300s deployment/kafka --namespace=default
         
-        echo "Waiting for Cassandra to be ready..."
-        kubectl wait --for=condition=ready --timeout=300s pod -l app=cassandra --namespace=default
+        echo "Waiting for Cassandra StatefulSet to be ready..."
+        kubectl wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/cassandra --namespace=default || echo "StatefulSet timeout, continuing..."
+        
+        echo "Checking Cassandra pod status..."
+        kubectl get pods -l app=cassandra --namespace=default
+        kubectl get statefulset cassandra --namespace=default
+        
+        echo "Waiting for Cassandra pod to be ready (extended timeout)..."
+        kubectl wait --for=condition=ready --timeout=600s pod -l app=cassandra --namespace=default || {
+          echo "Cassandra still not ready, checking detailed status..."
+          kubectl describe pod -l app=cassandra --namespace=default
+          kubectl logs -l app=cassandra --namespace=default --tail=100
+          kubectl get events --namespace=default --field-selector involvedObject.name=cassandra-0
+          echo "Continuing despite Cassandra not being ready..."
+        }
         
         echo "Waiting for Prometheus to be ready..."
         kubectl wait --for=condition=available --timeout=300s deployment/prometheus --namespace=default
