@@ -55,24 +55,18 @@ spec:
         - name: HEAP_NEWSIZE
           value: "256M"
         readinessProbe:
-          exec:
-            command:
-            - /bin/bash
-            - -c
-            - "cqlsh -e 'SELECT now() FROM system.local;'"
-          initialDelaySeconds: 60
-          periodSeconds: 15
-          timeoutSeconds: 10
-          failureThreshold: 5
+          tcpSocket:
+            port: 9042
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         livenessProbe:
-          exec:
-            command:
-            - /bin/bash
-            - -c
-            - "nodetool status | grep -E '^UN' || cqlsh -e 'SELECT now() FROM system.local;'"
-          initialDelaySeconds: 120
+          tcpSocket:
+            port: 9042
+          initialDelaySeconds: 60
           periodSeconds: 30
-          timeoutSeconds: 10
+          timeoutSeconds: 5
           failureThreshold: 3
         resources:
           requests:

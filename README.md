@@ -158,16 +158,21 @@ Services communicate using Kubernetes DNS:
 
 ### Common Issues
 
-**Cassandra Startup Timeout:**
-Cassandra can take 5-10 minutes to start on first deployment. This is normal behavior. If it times out:
+**Cassandra Startup Issues:**
+If Cassandra readiness probe fails after configuration changes:
 ```bash
 # Check Cassandra status
 kubectl get statefulset cassandra --namespace=default
 kubectl get pods -l app=cassandra --namespace=default
-kubectl logs cassandra-0 --namespace=default --tail=100
 
-# Wait manually with longer timeout
-kubectl wait --for=condition=ready --timeout=900s pod -l app=cassandra --namespace=default
+# If probe config didn't update, restart the pod
+kubectl delete pod cassandra-0 --namespace=default
+
+# Wait for it to come back up
+kubectl wait --for=condition=ready --timeout=600s pod -l app=cassandra --namespace=default
+
+# Check logs if still having issues
+kubectl logs cassandra-0 --namespace=default --tail=100
 ```
 
 ### Check pod status:

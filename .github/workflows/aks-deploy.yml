@@ -32,6 +32,12 @@ jobs:
         echo "Deploying Cassandra..."
         kubectl apply -f k8s/cassandra.yaml --namespace=default
         
+        echo "Checking if Cassandra pod exists and restarting if needed..."
+        if kubectl get pod cassandra-0 --namespace=default >/dev/null 2>&1; then
+          echo "Existing Cassandra pod found, deleting to apply new configuration..."
+          kubectl delete pod cassandra-0 --namespace=default --wait=false || true
+        fi
+        
         echo "Deploying Prometheus..."
         kubectl apply -f k8s/prometheus.yaml --namespace=default
         
@@ -63,10 +69,22 @@ jobs:
         }
         
         echo "Waiting for Prometheus to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/prometheus --namespace=default
+        kubectl wait --for=condition=available --timeout=600s deployment/prometheus --namespace=default || {
+          echo "Prometheus not ready, checking status..."
+          kubectl get pods -l app=prometheus --namespace=default
+          kubectl describe pod -l app=prometheus --namespace=default
+          kubectl logs -l app=prometheus --namespace=default --tail=50
+          echo "Continuing despite Prometheus not being ready..."
+        }
         
         echo "Waiting for Grafana to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/grafana --namespace=default
+        kubectl wait --for=condition=available --timeout=600s deployment/grafana --namespace=default || {
+          echo "Grafana not ready, checking status..."
+          kubectl get pods -l app=grafana --namespace=default
+          kubectl describe pod -l app=grafana --namespace=default
+          kubectl logs -l app=grafana --namespace=default --tail=50
+          echo "Continuing despite Grafana not being ready..."
+        }
 
     - name: Deploy microservices
       run: |

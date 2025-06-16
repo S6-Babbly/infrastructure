@@ -216,11 +216,11 @@ spec:
           mountPath: /prometheus
         resources:
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
-          requests:
             memory: "1Gi"
             cpu: "500m"
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
         readinessProbe:
           httpGet:
             path: /-/ready
