@@ -27,25 +27,23 @@ The application uses the following ports and services:
 1. **Azure Resources:**
    - Azure Kubernetes Service (AKS) cluster
    - Azure Container Registry (ACR) (optional, using Docker Hub currently)
-   - Service Principal with appropriate permissions
 
 2. **GitHub Secrets:**
-   Set up the following secrets in your GitHub repository:
+   Set up the following secret in your GitHub repository:
    ```
-   AZURE_CREDENTIALS - Service principal credentials in JSON format:
-   {
-     "clientId": "your-client-id",
-     "clientSecret": "your-client-secret", 
-     "subscriptionId": "your-subscription-id",
-     "tenantId": "your-tenant-id"
-   }
+   KUBE_CONFIG_DATA - Base64 encoded kubeconfig file content
    ```
-
-3. **Update Workflow Variables:**
-   Edit `.github/workflows/aks-deploy.yml` and update:
-   - `AZURE_CONTAINER_REGISTRY`: Your ACR name (if using)
-   - `RESOURCE_GROUP`: Your Azure resource group name
-   - `CLUSTER_NAME`: Your AKS cluster name
+   
+   To get your kubeconfig:
+   ```bash
+   # Get AKS credentials
+   az aks get-credentials --resource-group your-resource-group --name your-aks-cluster
+   
+   # Base64 encode the config
+   cat ~/.kube/config | base64 | tr -d '\n'
+   ```
+   
+   Copy the output and paste it as the `KUBE_CONFIG_DATA` secret value in GitHub.
 
 ## Deployment Order
 
@@ -76,26 +74,26 @@ If you need to deploy manually:
 
 ```bash
 # Deploy infrastructure
-kubectl apply -f k8s/secrets.yaml
-kubectl apply -f k8s/kafka-zookeeper.yaml
-kubectl apply -f k8s/cassandra.yaml
-kubectl apply -f k8s/prometheus.yaml
-kubectl apply -f k8s/grafana.yaml
+kubectl apply -f k8s/secrets.yaml --namespace=default
+kubectl apply -f k8s/kafka-zookeeper.yaml --namespace=default
+kubectl apply -f k8s/cassandra.yaml --namespace=default
+kubectl apply -f k8s/prometheus.yaml --namespace=default
+kubectl apply -f k8s/grafana.yaml --namespace=default
 
 # Wait for infrastructure to be ready
-kubectl wait --for=condition=available --timeout=300s deployment/kafka
-kubectl wait --for=condition=ready --timeout=300s pod -l app=cassandra
-kubectl wait --for=condition=available --timeout=300s deployment/prometheus
-kubectl wait --for=condition=available --timeout=300s deployment/grafana
+kubectl wait --for=condition=available --timeout=300s deployment/kafka --namespace=default
+kubectl wait --for=condition=ready --timeout=300s pod -l app=cassandra --namespace=default
+kubectl wait --for=condition=available --timeout=300s deployment/prometheus --namespace=default
+kubectl wait --for=condition=available --timeout=300s deployment/grafana --namespace=default
 
 # Deploy services
-kubectl apply -f ../babbly-auth-service/k8s/
-kubectl apply -f ../babbly-user-service/k8s/
-kubectl apply -f ../babbly-post-service/k8s/
-kubectl apply -f ../babbly-comment-service/k8s/
-kubectl apply -f ../babbly-like-service/k8s/
-kubectl apply -f ../babbly-api-gateway/k8s/
-kubectl apply -f ../babbly-frontend/k8s/
+kubectl apply -f ../babbly-auth-service/k8s/ --namespace=default
+kubectl apply -f ../babbly-user-service/k8s/ --namespace=default
+kubectl apply -f ../babbly-post-service/k8s/ --namespace=default
+kubectl apply -f ../babbly-comment-service/k8s/ --namespace=default
+kubectl apply -f ../babbly-like-service/k8s/ --namespace=default
+kubectl apply -f ../babbly-api-gateway/k8s/ --namespace=default
+kubectl apply -f ../babbly-frontend/k8s/ --namespace=default
 ```
 
 ## Accessing the Application
@@ -156,42 +154,42 @@ Services communicate using Kubernetes DNS:
 
 ### Check pod status:
 ```bash
-kubectl get pods
-kubectl describe pod <pod-name>
-kubectl logs <pod-name>
+kubectl get pods --namespace=default
+kubectl describe pod <pod-name> --namespace=default
+kubectl logs <pod-name> --namespace=default
 ```
 
 ### Check service connectivity:
 ```bash
-kubectl get services
-kubectl get endpoints
+kubectl get services --namespace=default
+kubectl get endpoints --namespace=default
 ```
 
 ### Check Kafka topics:
 ```bash
-kubectl exec -it deployment/kafka -- kafka-topics --bootstrap-server localhost:9092 --list
+kubectl exec deployment/kafka --namespace=default -- kafka-topics --bootstrap-server localhost:9092 --list
 ```
 
 ### Check Cassandra keyspaces:
 ```bash
-kubectl exec -it cassandra-0 -- cqlsh -e "DESCRIBE KEYSPACES;"
+kubectl exec cassandra-0 --namespace=default -- cqlsh -e "DESCRIBE KEYSPACES;"
 ```
 
 ### Check monitoring stack:
 ```bash
 # Check Prometheus targets
-kubectl port-forward service/prometheus 9090:9090
+kubectl port-forward service/prometheus 9090:9090 --namespace=default
 # Then visit http://localhost:9090/targets
 
 # Check Grafana dashboards
-kubectl port-forward service/grafana 3000:3000
+kubectl port-forward service/grafana 3000:3000 --namespace=default
 # Then visit http://localhost:3000 (admin/admin123)
 
 # Check Prometheus metrics collection
-kubectl logs deployment/prometheus
+kubectl logs deployment/prometheus --namespace=default
 
 # Check Grafana logs
-kubectl logs deployment/grafana
+kubectl logs deployment/grafana --namespace=default
 ```
 
 ## Development Environment

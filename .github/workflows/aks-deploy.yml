@@ -5,11 +5,6 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
-env:
-  AZURE_CONTAINER_REGISTRY: "your-acr-name"
-  RESOURCE_GROUP: "your-resource-group"
-  CLUSTER_NAME: "your-aks-cluster"
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,107 +13,101 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Azure CLI
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
-      with:
-        version: 'latest'
 
-    - name: Get AKS credentials
+    - name: Authenticate to AKS
       run: |
-        az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --overwrite-existing
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
 
     - name: Deploy infrastructure components
       run: |
         echo "Deploying secrets..."
-        kubectl apply -f k8s/secrets.yaml
+        kubectl apply -f k8s/secrets.yaml --namespace=default
         
         echo "Deploying Kafka and Zookeeper..."
-        kubectl apply -f k8s/kafka-zookeeper.yaml
+        kubectl apply -f k8s/kafka-zookeeper.yaml --namespace=default
         
         echo "Deploying Cassandra..."
-        kubectl apply -f k8s/cassandra.yaml
+        kubectl apply -f k8s/cassandra.yaml --namespace=default
         
         echo "Deploying Prometheus..."
-        kubectl apply -f k8s/prometheus.yaml
+        kubectl apply -f k8s/prometheus.yaml --namespace=default
         
         echo "Deploying Grafana..."
-        kubectl apply -f k8s/grafana.yaml
+        kubectl apply -f k8s/grafana.yaml --namespace=default
 
     - name: Wait for infrastructure to be ready
       run: |
         echo "Waiting for Zookeeper to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/zookeeper
+        kubectl wait --for=condition=available --timeout=300s deployment/zookeeper --namespace=default
         
         echo "Waiting for Kafka to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/kafka
+        kubectl wait --for=condition=available --timeout=300s deployment/kafka --namespace=default
         
         echo "Waiting for Cassandra to be ready..."
-        kubectl wait --for=condition=ready --timeout=300s pod -l app=cassandra
+        kubectl wait --for=condition=ready --timeout=300s pod -l app=cassandra --namespace=default
         
         echo "Waiting for Prometheus to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/prometheus
+        kubectl wait --for=condition=available --timeout=300s deployment/prometheus --namespace=default
         
         echo "Waiting for Grafana to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/grafana
+        kubectl wait --for=condition=available --timeout=300s deployment/grafana --namespace=default
 
     - name: Deploy microservices
       run: |
         echo "Deploying Auth Service..."
-        kubectl apply -f ../babbly-auth-service/k8s/
+        kubectl apply -f ../babbly-auth-service/k8s/ --namespace=default
         
         echo "Deploying User Service..."
-        kubectl apply -f ../babbly-user-service/k8s/
+        kubectl apply -f ../babbly-user-service/k8s/ --namespace=default
         
         echo "Deploying Post Service..."
-        kubectl apply -f ../babbly-post-service/k8s/
+        kubectl apply -f ../babbly-post-service/k8s/ --namespace=default
         
         echo "Deploying Comment Service..."
-        kubectl apply -f ../babbly-comment-service/k8s/
+        kubectl apply -f ../babbly-comment-service/k8s/ --namespace=default
         
         echo "Deploying Like Service..."
-        kubectl apply -f ../babbly-like-service/k8s/
+        kubectl apply -f ../babbly-like-service/k8s/ --namespace=default
 
     - name: Deploy API Gateway
       run: |
         echo "Deploying API Gateway..."
-        kubectl apply -f ../babbly-api-gateway/k8s/
+        kubectl apply -f ../babbly-api-gateway/k8s/ --namespace=default
 
     - name: Deploy Frontend
       run: |
         echo "Deploying Frontend..."
-        kubectl apply -f ../babbly-frontend/k8s/
+        kubectl apply -f ../babbly-frontend/k8s/ --namespace=default
 
     - name: Wait for deployments to be ready
       run: |
         echo "Waiting for all deployments to be ready..."
-        kubectl wait --for=condition=available --timeout=300s deployment/auth-service
-        kubectl wait --for=condition=available --timeout=300s deployment/user-service
-        kubectl wait --for=condition=available --timeout=300s deployment/post-service
-        kubectl wait --for=condition=available --timeout=300s deployment/comment-service
-        kubectl wait --for=condition=available --timeout=300s deployment/like-service
-        kubectl wait --for=condition=available --timeout=300s deployment/api-gateway
-        kubectl wait --for=condition=available --timeout=300s deployment/frontend
+        kubectl wait --for=condition=available --timeout=300s deployment/auth-service --namespace=default
+        kubectl wait --for=condition=available --timeout=300s deployment/user-service --namespace=default
+        kubectl wait --for=condition=available --timeout=300s deployment/post-service --namespace=default
+        kubectl wait --for=condition=available --timeout=300s deployment/comment-service --namespace=default
+        kubectl wait --for=condition=available --timeout=300s deployment/like-service --namespace=default
+        kubectl wait --for=condition=available --timeout=300s deployment/api-gateway --namespace=default
+        kubectl wait --for=condition=available --timeout=300s deployment/frontend --namespace=default
 
     - name: Get service information
       run: |
         echo "Getting service information..."
-        kubectl get services
+        kubectl get services --namespace=default
         echo "Getting pod status..."
-        kubectl get pods
+        kubectl get pods --namespace=default
         echo "Getting external IP for API Gateway..."
-        kubectl get service api-gateway
+        kubectl get service api-gateway --namespace=default
         echo "Getting monitoring services..."
-        kubectl get service prometheus grafana
+        kubectl get service prometheus grafana --namespace=default
 
     - name: Verify deployment
       run: |
         echo "Verifying Kafka topics..."
-        kubectl exec -it deployment/kafka -- kafka-topics --bootstrap-server localhost:9092 --list || true
+        kubectl exec deployment/kafka --namespace=default -- kafka-topics --bootstrap-server localhost:9092 --list || true
         
         echo "Checking service connectivity..."
-        kubectl get endpoints 
+        kubectl get endpoints --namespace=default 
