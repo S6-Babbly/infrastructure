@@ -17,14 +17,21 @@ spec:
     spec:
       containers:
       - name: zookeeper
-        image: confluentinc/cp-zookeeper:7.4.0
+        image: zookeeper:3.8
         ports:
         - containerPort: 2181
         env:
-        - name: ZOOKEEPER_CLIENT_PORT
-          value: "2181"
-        - name: ZOOKEEPER_TICK_TIME
-          value: "2000"
+        - name: ZOO_MY_ID
+          value: "1"
+        - name: ZOO_SERVERS
+          value: "server.1=0.0.0.0:2888:3888;2181"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
 ---
 apiVersion: v1
 kind: Service
@@ -49,6 +56,11 @@ metadata:
     app: kafka
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
   selector:
     matchLabels:
       app: kafka
@@ -69,7 +81,7 @@ spec:
         ']
       containers:
       - name: kafka
-        image: confluentinc/cp-kafka:7.4.0
+        image: confluentinc/cp-kafka:6.2.0
         ports:
         - containerPort: 9092
         env:
@@ -79,6 +91,8 @@ spec:
           value: "zookeeper:2181"
         - name: KAFKA_ADVERTISED_LISTENERS
           value: "PLAINTEXT://kafka:9092"
+        - name: KAFKA_LISTENERS
+          value: "PLAINTEXT://0.0.0.0:9092"
         - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
           value: "PLAINTEXT:PLAINTEXT"
         - name: KAFKA_INTER_BROKER_LISTENER_NAME
@@ -89,11 +103,11 @@ spec:
           value: "true"
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "512Mi"
+            cpu: "200m"
 ---
 apiVersion: v1
 kind: Service

@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: babbly-external-config
 data:
-  API_GATEWAY_EXTERNAL_URL: "http://REPLACE_WITH_API_GATEWAY_EXTERNAL_IP:5010"
-  FRONTEND_EXTERNAL_URL: "http://REPLACE_WITH_FRONTEND_EXTERNAL_IP"
+  API_GATEWAY_EXTERNAL_URL: "http://172.212.0.150:5010"
+  FRONTEND_EXTERNAL_URL: "http://52.226.60.100"
   # You can update these values after deployment using:
   # kubectl patch configmap babbly-external-config --patch '{"data":{"API_GATEWAY_EXTERNAL_URL":"http://YOUR_ACTUAL_IP:5010"}}' 
