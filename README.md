@@ -107,12 +107,12 @@ After deployment:
 4. **Prometheus:** Access via NodePort or port-forward
 5. **Grafana:** Access via NodePort or port-forward
    - **Username:** admin
-   - **Password:** admin123
+   - **Password:** ${GRAFANA_ADMIN_PASSWORD}
 
 ## Configuration Notes
 
 ### Database Configuration
-- **PostgreSQL:** Using external cloud service (Neon DB)
+- **PostgreSQL:** Using external cloud service (configurable)
 - **Cassandra:** Deployed in cluster with persistent storage
 - **Keyspaces:** babbly_posts, babbly_comments, babbly_likes
 
@@ -194,12 +194,12 @@ kubectl exec cassandra-0 --namespace=default -- cqlsh -e "DESCRIBE KEYSPACES;"
 ### Check monitoring stack:
 ```bash
 # Check Prometheus targets
-kubectl port-forward service/prometheus 9090:9090 --namespace=default
-# Then visit http://localhost:9090/targets
+kubectl port-forward service/prometheus ${PROMETHEUS_PORT}:${PROMETHEUS_PORT} --namespace=default
+# Then visit http://localhost:${PROMETHEUS_PORT}/targets
 
 # Check Grafana dashboards
-kubectl port-forward service/grafana 3000:3000 --namespace=default
-# Then visit http://localhost:3000 (admin/admin123)
+kubectl port-forward service/grafana ${GRAFANA_PORT}:${GRAFANA_PORT} --namespace=default
+# Then visit http://localhost:${GRAFANA_PORT} (admin/${GRAFANA_ADMIN_PASSWORD})
 
 # Check Prometheus metrics collection
 kubectl logs deployment/prometheus --namespace=default
@@ -214,7 +214,7 @@ All services are configured for development environment:
 - `ASPNETCORE_ENVIRONMENT=Development`
 - Detailed logging enabled
 - CORS configured for local development
-- Default Cassandra credentials (cassandra/cassandra)
+- Default database credentials (change for production)
 
 ## Metrics Requirements
 
@@ -228,11 +228,13 @@ For Prometheus monitoring to work properly, each microservice should expose metr
 ## Security Notes
 
 ⚠️ **For production deployment:**
-- Change default Cassandra credentials
-- Change default Grafana admin password (currently: admin123)
+- Change all default credentials before deployment
+- Use strong passwords and rotate them regularly
 - Use proper TLS certificates
 - Configure network policies
-- Use secure secret management (Azure Key Vault, etc.)
+- Use secure secret management (Azure Key Vault, AWS Secrets Manager, etc.)
 - Enable RBAC and pod security policies
 - Restrict Prometheus scraping permissions
-- Configure Grafana OAuth integration 
+- Configure Grafana OAuth integration
+- Implement proper authentication and authorization
+- Regular security audits and updates 
