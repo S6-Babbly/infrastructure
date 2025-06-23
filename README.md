@@ -1,34 +1,36 @@
-# Babbly Infrastructure - AKS Deployment
+# Babbly Infrastructure - Kubernetes Deployment
 
-This directory contains the Kubernetes manifests and GitHub workflow for deploying the Babbly application to Azure Kubernetes Service (AKS).
+This directory contains the Kubernetes manifests and GitHub workflow for deploying the Babbly application infrastructure to Kubernetes clusters.
 
 ## Architecture Overview
 
-The application uses the following ports and services:
+The infrastructure includes the following components:
 
-| Service | Internal Port | External Port | Type |
-|---------|---------------|---------------|------|
-| Frontend | 3000 | 30000 (NodePort) | NodePort |
-| API Gateway | 8080 | 5010 | LoadBalancer |
-| Auth Service | 5001 | - | ClusterIP |
-| User Service | 8081 | - | ClusterIP |
-| Post Service | 8080 | - | ClusterIP |
-| Comment Service | 8082 | - | ClusterIP |
-| Like Service | 8083 | - | ClusterIP |
-| Cassandra | 9042 | - | Headless |
-| Kafka | 9092 | - | ClusterIP |
-| Zookeeper | 2181 | - | ClusterIP |
-| **Monitoring** |  |  |  |
-| Prometheus | 9090 | 30090 (NodePort) | NodePort |
-| Grafana | 3000 | 30030 (NodePort) | NodePort |
+| Component | Purpose | Exposure |
+|-----------|---------|----------|
+| **Application Services** |  |  |
+| Frontend | User interface | External (NodePort) |
+| API Gateway | Request routing | External (LoadBalancer) |
+| Auth Service | Authentication | Internal |
+| User Service | User management | Internal |
+| Post Service | Post management | Internal |
+| Comment Service | Comment management | Internal |
+| Like Service | Like management | Internal |
+| **Data Layer** |  |  |
+| Cassandra | NoSQL database | Internal |
+| Kafka | Message broker | Internal |
+| Zookeeper | Kafka coordination | Internal |
+| **Monitoring** |  |  |
+| Prometheus | Metrics collection | External (NodePort) |
+| Grafana | Monitoring dashboards | External (NodePort) |
 
 ## Prerequisites
 
-1. **Azure Resources:**
-   - Azure Kubernetes Service (AKS) cluster
-   - Azure Container Registry (ACR) (optional, using Docker Hub currently)
+1. **Kubernetes Cluster:**
+   - Any Kubernetes cluster (AKS, EKS, GKE, or local)
+   - Sufficient resources for all components
 
-2. **GitHub Secrets:**
+2. **GitHub Secrets (for automated deployment):**
    Set up the following secret in your GitHub repository:
    ```
    KUBE_CONFIG_DATA - Base64 encoded kubeconfig file content
@@ -36,7 +38,7 @@ The application uses the following ports and services:
    
    To get your kubeconfig:
    ```bash
-   # Get AKS credentials
+   # Get cluster credentials (example for AKS)
    az aks get-credentials --resource-group your-resource-group --name your-aks-cluster
    
    # Base64 encode the config
@@ -58,20 +60,20 @@ The GitHub workflow deploys ONLY infrastructure components:
 
 **Microservices (separate workflows):**
 Each microservice has its own CI/CD pipeline in their respective repositories:
-- Auth Service (port 5001) - deployed via `babbly-auth-service/release.yml`
-- User Service (port 8081) - deployed via `babbly-user-service/release.yml`
-- Post Service (port 8080) - deployed via `babbly-post-service/release.yml`
-- Comment Service (port 8082) - deployed via `babbly-comment-service/release.yml`
-- Like Service (port 8083) - deployed via `babbly-like-service/release.yml`
-- API Gateway (port 8080 → 5010) - deployed via `babbly-api-gateway/release.yml`
-- Frontend (port 3000 → 30000) - deployed via `babbly-frontend/release.yml`
+- Auth Service - deployed via `babbly-auth-service/release.yml`
+- User Service - deployed via `babbly-user-service/release.yml`
+- Post Service - deployed via `babbly-post-service/release.yml`
+- Comment Service - deployed via `babbly-comment-service/release.yml`
+- Like Service - deployed via `babbly-like-service/release.yml`
+- API Gateway - deployed via `babbly-api-gateway/release.yml`
+- Frontend - deployed via `babbly-frontend/release.yml`
 
 ## Manual Infrastructure Deployment
 
 If you need to deploy infrastructure manually (run from repository root):
 
 ```bash
-# Deploy infrastructure only
+# Deploy infrastructure components
 kubectl apply -f infrastructure/k8s/secrets.yaml --namespace=default
 kubectl apply -f infrastructure/k8s/kafka-zookeeper.yaml --namespace=default
 kubectl apply -f infrastructure/k8s/cassandra.yaml --namespace=default
@@ -95,22 +97,22 @@ kubectl wait --for=condition=available --timeout=300s deployment/grafana --names
 
 After deployment:
 
-1. **Get external IPs:**
+1. **Get service information:**
    ```bash
    kubectl get services
    ```
 
-2. **Frontend:** Access via NodePort on any node IP:30000
-3. **API Gateway:** Access via LoadBalancer external IP:5010
-4. **Prometheus:** Access via NodePort on any node IP:30090
-5. **Grafana:** Access via NodePort on any node IP:30030
+2. **Frontend:** Access via NodePort or configured ingress
+3. **API Gateway:** Access via LoadBalancer external IP or ingress
+4. **Prometheus:** Access via NodePort or port-forward
+5. **Grafana:** Access via NodePort or port-forward
    - **Username:** admin
    - **Password:** admin123
 
 ## Configuration Notes
 
 ### Database Configuration
-- **PostgreSQL:** Using Neon DB (external cloud service)
+- **PostgreSQL:** Using external cloud service (Neon DB)
 - **Cassandra:** Deployed in cluster with persistent storage
 - **Keyspaces:** babbly_posts, babbly_comments, babbly_likes
 
@@ -124,19 +126,19 @@ After deployment:
 
 ### Service Discovery
 Services communicate using Kubernetes DNS:
-- `auth-service:5001`
-- `user-service:8081` 
-- `post-service:8080`
-- `comment-service:8082`
-- `like-service:8083`
-- `kafka:9092`
-- `cassandra:9042`
+- `auth-service`
+- `user-service` 
+- `post-service`
+- `comment-service`
+- `like-service`
+- `kafka`
+- `cassandra`
 
 ### Monitoring Stack
 - **Prometheus:** Collects metrics from all Babbly services and Kubernetes cluster
   - Configured to scrape `/metrics` endpoints from all microservices
   - Monitors Kubernetes nodes, pods, and services
-  - 8GB persistent storage with 200h retention
+  - Persistent storage with configurable retention
   
 - **Grafana:** Provides visualization dashboards
   - Pre-configured Prometheus datasource
@@ -230,7 +232,7 @@ For Prometheus monitoring to work properly, each microservice should expose metr
 - Change default Grafana admin password (currently: admin123)
 - Use proper TLS certificates
 - Configure network policies
-- Use Azure Key Vault for secrets
+- Use secure secret management (Azure Key Vault, etc.)
 - Enable RBAC and pod security policies
 - Restrict Prometheus scraping permissions
 - Configure Grafana OAuth integration 

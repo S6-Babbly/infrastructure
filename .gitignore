@@ -1,0 +1,46 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Kubernetes secrets with actual values
+secrets-actual.yaml
+secrets-production.yaml
+secrets-local.yaml
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+
+# Helm charts (if using Helm)
+charts/
+*.tgz
+
+# Terraform files (if using Terraform)
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# Local kubectl config
+kubeconfig
+kubeconfig.*
+!kubeconfig.example 
